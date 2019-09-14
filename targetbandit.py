@@ -17,6 +17,7 @@ import sys
 
 #complie file with command
 # pyinstaller --onedir --add-data "C:/Users/simen/PycharmProjects/Bandit/venv/Lib/site-packages/pyfiglet;./pyfiglet" targetbandit.py
+# use --onefile flag for single exe file
 
 def rbeta(alpha, beta, size=None):
     """Random beta variates."""
