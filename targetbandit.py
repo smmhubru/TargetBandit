@@ -18,6 +18,7 @@ import sys
 #complie file with command
 # pyinstaller --onedir --add-data "C:/Users/simen/PycharmProjects/Bandit/venv/Lib/site-packages/pyfiglet;./pyfiglet" targetbandit.py
 # use --onefile flag for single exe file
+# OSX: pyinstaller --onefile --add-binary='/System/Library/Frameworks/Tk.framework/Tk':'tk' --add-binary='/System/Library/Frameworks/Tcl.framework/Tcl':'tcl' --add-data='/Users/sergo/PycharmProjects/TargetBandit/venv/lib/python3.7/site-packages/pyfiglet/':'pyfiglet' targetbandit.py
 
 def rbeta(alpha, beta, size=None):
     """Random beta variates."""
@@ -86,7 +87,7 @@ class Ads(object):
     def __len__(self):
         return len(self.ads_obj_list)
 
-    def load(self, campaign_id: str):
+    def load(self, campaign_id):
         """Initial procedures: get ads list, fetch data, load ads first time, update ads stats, fill arrays"""
         self.campaign_id = campaign_id
         self._clear_ads()
