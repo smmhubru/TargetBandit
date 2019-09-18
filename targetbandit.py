@@ -18,7 +18,7 @@ import sys
 #complie file with command, version 0.1.2
 # pyinstaller --onedir --add-data "C:/Users/simen/PycharmProjects/Bandit/venv/Lib/site-packages/pyfiglet;./pyfiglet" targetbandit.py
 # use --onefile flag for single exe file
-# OSX: pyinstaller --onefile --add-binary='/System/Library/Frameworks/Tk.framework/Tk':'tk' --add-binary='/System/Library/Frameworks/Tcl.framework/Tcl':'tcl' --add-data='/Users/sergo/PycharmProjects/TargetBandit/venv/lib/python3.7/site-packages/pyfiglet/':'pyfiglet' targetbandit.py
+# OSX: pyinstaller --onedir --add-binary='/System/Library/Frameworks/Tk.framework/Tk':'tk' --add-binary='/System/Library/Frameworks/Tcl.framework/Tcl':'tcl' --add-data='/Users/sergo/PycharmProjects/TargetBandit/venv/lib/python3.7/site-packages/pyfiglet/':'pyfiglet' targetbandit.py
 
 def rbeta(alpha, beta, size=None):
     """Random beta variates."""
