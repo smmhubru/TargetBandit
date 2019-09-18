@@ -98,6 +98,14 @@ class Ads(object):
         self._fill_ads_click_impr_array()
         self._fill_winner_array()
 
+    def update(self):
+        """Update ads data: fetch data, update ads, fill ads click impressions, fill winner array."""
+        self._fetch_data()
+        self._update_ads()
+        self._fill_ads_click_impr_array()
+        self._fill_winner_array()
+
+
     def _clear_ads(self):
         """Reset all parametrs to defaults."""
         self.ads_obj_list = []
@@ -238,6 +246,8 @@ class Ads(object):
             for index, ad in enumerate(self.ads_obj_list):
                 data_list = []
                 name = ad.ad_name
+                if (self.ads_optimal_choice >= 0) and (self.ads_optimal_choice == index):
+                    name = ">" + name
                 clicks = str(ad.clicks)
                 impressions = str(ad.impressions)
                 ctr = ad.get_ctr()
@@ -420,7 +430,7 @@ class Robot(object):
 
     def make_decision(self):
         """Robot makes decision what ads to run next N minutes."""
-        self.ads._update_ads()
+        self.ads.update()
         b = rbeta(1 + self.ads.ads_clicks_array, 1 + self.ads.ads_impressions_array - self.ads.ads_clicks_array)
         new_optimal_choice = np.argmax(b)
 
@@ -429,6 +439,7 @@ class Robot(object):
             self.ads.ads_obj_list[new_optimal_choice].start_ad()
             self.stop_other_ads(new_optimal_choice)
         else:
+            self.ads.ads_obj_list[new_optimal_choice].start_ad()
             self.log("Choice not changed")
 
     def choice_changed(self, number):
@@ -470,6 +481,7 @@ class ListView(Frame):
         self._start_button = Button("Старт", self._start)
         self._stop_button = Button("Стоп", self._stop)
         self._image_button = Button("График", self._show_image)
+        self._refresh_button = Button("Обновить", self._reload_list)
         self._setup_button = Button("Настройки", self._setup)
         layout = Layout([100], fill_frame=True)
         self.add_layout(layout)
@@ -477,20 +489,22 @@ class ListView(Frame):
 
         layout.add_widget(Divider())
 
-        layout2 = Layout([1, 1, 1, 1, 1])
+        layout2 = Layout([1, 1, 1, 1, 1, 1])
         self.add_layout(layout2)
         layout2.add_widget(self._start_button, 0)
         layout2.add_widget(self._stop_button, 1)
         layout2.add_widget(self._image_button, 2)
-        layout2.add_widget(self._setup_button, 3)
-        layout2.add_widget(Button("Выход", self._quit), 4)
+        layout2.add_widget(self._refresh_button, 3)
+        layout2.add_widget(self._setup_button, 4)
+        layout2.add_widget(Button("Выход", self._quit), 5)
         self.fix()
         self._on_pick()
 
     def _on_pick(self):
         self._image_button.disabled = self._ads_list_view.value is None
         self._stop_button.disabled = self._robot.working_flag is False
-        self._start_button.disabled = self._ads_list_view.value is None
+        self._start_button.disabled = (self._ads_list_view.value is None) or (self._robot.working_flag is True)
+
 
     def _ad_selected(self):
         ad_id = self._ads_list_view.value
