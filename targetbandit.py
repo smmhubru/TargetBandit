@@ -318,6 +318,49 @@ class Ad(object):
         self.posterior_samples = posterior.rvs(samples)
 
 
+class Bids(object):
+    """Bids class to store information and behaviour about bids."""
+    def __init__(self, max_bid=-1,
+                 min_bid=-1,
+                 bid_points=[],
+                 history=[]):
+        self.max_bid = max_bid
+        self.min_bid = min_bid
+        self.bid_points = bid_points
+        self.history = history
+
+    def generate(self):
+        """Generate bids from max, all numbers in penny"""
+        def make_points(max_bid, min_bid):
+            bid_points = [0] * 9
+            bid_points[0] = min_bid
+            bid_points[8] = max_bid
+            bid_points[4] = ((max_bid - min_bid) // 2) + min_bid
+            bid_points[2] = ((bid_points[4] - bid_points[0]) // 2) + bid_points[0]
+            bid_points[6] = ((bid_points[8] - bid_points[4]) // 2) + bid_points[4]
+            bid_points[1] = ((bid_points[2] - bid_points[0]) // 2) + bid_points[0]
+            bid_points[3] = ((bid_points[4] - bid_points[2]) // 2) + bid_points[2]
+            bid_points[5] = ((bid_points[6] - bid_points[4]) // 2) + bid_points[4]
+            bid_points[7] = ((bid_points[8] - bid_points[6]) // 2) + bid_points[6]
+            return bid_points
+        if (self.max_bid >= 30_00) and (self.max_bid <= 1000_00):
+            self.min_bid = 30_00
+            self.bid_points = make_points(self.max_bid, self.min_bid)
+            return True
+        elif (self.max_bid >= 1_20) and (self.max_bid <= 20_00):
+            self.min_bid = 1_20
+            self.bid_points = make_points(self.max_bid, self.min_bid)
+            return True
+        else:
+            print("some input error")
+            return False
+
+
+
+
+
+
+
 class Cabinet(object):
 
     def __init__(self, cabinet_id=None,
@@ -766,6 +809,7 @@ class SetTokenView(Frame):
 
     def _back(self):
         raise NextScene("Settings")
+
 
 class ManualView(Frame):
 
