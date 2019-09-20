@@ -66,6 +66,7 @@ class Ads(object):
                  campaign_id=None,
                  ads_obj_list=[],
                  ads_id_list=[],
+                 ads_cost_type_list=[],
                  ads_data=[],
                  switch_log=[],
                  ads_clicks_array=[],
@@ -76,6 +77,7 @@ class Ads(object):
         self.ads_cabinet = ads_cabinet
         self.ads_obj_list = ads_obj_list
         self.ads_id_list = ads_id_list
+        self.ads_cost_type_list = ads_cost_type_list
         self.campaign_id = campaign_id
         self.ads_data = ads_data
         self.switch_log = switch_log
@@ -117,7 +119,7 @@ class Ads(object):
         self.ads_optimal_choice = -1
 
     def _get_ads_list(self):
-        """Get all ads ids from current ads campaign. Returns list of string with numbers."""
+        """Get all ads ids from current ads campaign."""
         session = vk.Session()
         api = vk.API(session, v=self.ads_cabinet.api_ver)
         time.sleep(1)
@@ -125,9 +127,12 @@ class Ads(object):
                                 account_id=self.ads_cabinet.cabinet_id,
                                 campaign_ids=f'{{"account_id":{self.campaign_id}}}')
         result_list = []
+        result_cost_type_list = []
         for ad in result:
             result_list.append({ad["id"]: ad["name"]})
+            result_cost_type_list.append({ad["id"]: ad["cost_type"]})
         self.ads_id_list = result_list
+        self.ads_cost_type_list = result_cost_type_list
 
     def _fetch_data(self):
         """Load statistics from VK via API, saves to self.ads_data."""
@@ -155,10 +160,15 @@ class Ads(object):
         for ad in self.ads_id_list:
             ads_id_name_dic.update(ad)
 
+        ads_cost_type_dic = {}
+        for ad in self.ads_cost_type_list:
+            ads_cost_type_dic.update(ad)
+
         for ad_dic in self.ads_data:
             ad_id = ad_dic["id"]
             ad_name = ads_id_name_dic[str(ad_id)]
-            ad = Ad(ad_id, ad_name, self.ads_cabinet)
+            ad_cost_type = ads_cost_type_dic[str(ad_id)]
+            ad = Ad(ad_id, ad_name, self.ads_cabinet, ad_cost_type)
             self._insert_ad(ad)
 
     def _update_ads(self):
@@ -258,11 +268,12 @@ class Ads(object):
 
 class Ad(object):
 
-    def __init__(self, ad_id, ad_name, cabinet, impressions=0,
+    def __init__(self, ad_id, ad_name, cabinet, cost_type, impressions=0,
                  clicks=0, run_status=0, approved=0, posterior_samples=None):
         self.ad_id = ad_id
         self.ad_name = ad_name
         self.cabinet = cabinet
+        self.cost_type = cost_type
         self.impressions = impressions
         self.clicks = clicks
         self.run_status = run_status
