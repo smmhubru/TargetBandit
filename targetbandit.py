@@ -374,16 +374,16 @@ class BidManager(object):
         self.current_bid_index = self.choose_bid()
         return self.bid_points[self.current_bid_index]
 
+    def previous_impressions(self, ad_id):
+        for snap in reversed(range(self.current_bid_index)):
+            if snap["ad_id"] == ad_id:
+                return snap["ad_impressions"]
+        return 0
+
     def count_reward(self):
 
-        def previous_impressions(ad_id):
-            for snap in reversed(range(self.current_bid_index)):
-                if snap["ad_id"] == ad_id:
-                    return snap["ad_impressions"]
-            return 0
-
         delta_impressions = self.history[self.current_time]["ad_impressions"] -\
-                            previous_impressions(self.history[self.current_time]["ad_id"])
+                            self.previous_impressions(self.history[self.current_time]["ad_id"])
 
         reward = float(delta_impressions / self.bid_points[self.current_bid_index])
         return {"reward": reward}
