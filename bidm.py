@@ -6,7 +6,8 @@ class BidManager(object):
                  history=[],
                  current_bid_index=-1,
                  current_time=-1,
-                 working_flag=False):
+                 working_flag=False,
+                 bid_rewards=[]):
         self.max_bid = max_bid
         self.min_bid = min_bid
         self.bid_points = bid_points
@@ -14,6 +15,7 @@ class BidManager(object):
         self.current_bid_index = current_bid_index
         self.current_time = current_time
         self.working_flag = working_flag
+        self.bid_rewards = bid_rewards
 
     def start(self, max_bid):
         self.max_bid = max_bid
@@ -30,6 +32,8 @@ class BidManager(object):
             bid_points[5] = ((bid_points[6] - bid_points[4]) // 2) + bid_points[4]
             bid_points[7] = ((bid_points[8] - bid_points[6]) // 2) + bid_points[6]
             return bid_points
+
+        self.bid_rewards = [0.0] * 9
 
         if (self.max_bid >= 30_00) and (self.max_bid <= 1000_00):
             self.min_bid = 30_00
@@ -51,13 +55,14 @@ class BidManager(object):
 
     def stop(self):
         """Stop working, clear history"""
-        self.working_flag = False
-        self.max_bid = -1
-        self.min_bid = -1
-        self.bid_points = []
-        self.history = []
-        self.current_bid_index = -1
-        self.current_time = -1
+        if self.working_flag:
+            self.working_flag = False
+            self.max_bid = -1
+            self.min_bid = -1
+            self.bid_points = []
+            self.history = []
+            self.current_bid_index = -1
+            self.current_time = -1
 
     def update(self, ad_id, ad_impressions):
         """Update previous history in case of additional impressions on stopped ad."""
@@ -68,8 +73,10 @@ class BidManager(object):
                         delta = ad_impressions - self.history[i]["total_impressions"]
                         self.history[i]["total_impressions"] = ad_impressions
                         self.history[i]["round_impressions"] += delta
+                        self.bid_rewards[self.history[i]["bid_index"]] -= self.history[i]["reward"]
                         self.history[i]["reward"] = float(self.history[i]["round_impressions"] /
                                                           self.bid_points[self.history[i]["bid_index"]])
+                        self.bid_rewards[self.history[i]["bid_index"]] += self.history[i]["reward"]
                         return True
                     else:
                         return False
@@ -81,8 +88,10 @@ class BidManager(object):
             snap = {"ad_id": ad_id, "bid_index": self.current_bid_index, "total_impressions": ad_impressions}
             self.history.append(snap)
             self.history[self.current_time].update(self._round_impressions())
-            self.history[self.current_time].update(self._round_reward())
+            reward = self._round_reward()
+            self.history[self.current_time].update(reward)
             self.current_time += 1
+            self.bid_rewards[self.current_bid_index] += reward["reward"]
             self.current_bid_index = self._choose_bid()
             return self.bid_points[self.current_bid_index]
 
