@@ -7,7 +7,10 @@ class BidManager(object):
                  current_bid_index=-1,
                  current_time=-1,
                  working_flag=False,
-                 bid_rewards=[]):
+                 bid_rewards=[],
+                 run_counts=[],
+                 bid_values=[],
+                 temperature=0.1):
         self.max_bid = max_bid
         self.min_bid = min_bid
         self.bid_points = bid_points
@@ -16,6 +19,9 @@ class BidManager(object):
         self.current_time = current_time
         self.working_flag = working_flag
         self.bid_rewards = bid_rewards
+        self.run_counts = run_counts
+        self.bid_values = bid_values
+        self.temperature = temperature
 
     def start(self, max_bid):
         self.max_bid = max_bid
@@ -34,6 +40,8 @@ class BidManager(object):
             return bid_points
 
         self.bid_rewards = [0.0] * 9
+        self.run_counts = [0] * 9
+        self.bid_values = [0.0] * 9
 
         if (self.max_bid >= 30_00) and (self.max_bid <= 1000_00):
             self.min_bid = 30_00
@@ -91,6 +99,8 @@ class BidManager(object):
             reward = self._round_reward()
             self.history[self.current_time].update(reward)
             self.current_time += 1
+            self.run_counts[self.current_bid_index] += 1
+            self._update_values(self.current_bid_index, reward["reward"])
             self.bid_rewards[self.current_bid_index] += reward["reward"]
             self.current_bid_index = self._choose_bid()
             return self.bid_points[self.current_bid_index]
@@ -114,11 +124,28 @@ class BidManager(object):
         reward = float(round_impressions / self.bid_points[self.current_bid_index])
         return {"reward": reward}
 
+    def _update_values(self, choosen_bid_index, reward):
+        n = self.run_counts[choosen_bid_index]
+        value = self.bid_values[choosen_bid_index]
+        new_value = ((n - 1) / float(n)) * value + (1 / float(n)) * reward
+        self.bid_values[choosen_bid_index] = new_value
+
     def _choose_bid(self):
-        """Not real algo still, just for testing"""
+        """Softmax algo working with temperature."""
         import random
-        random_choice = random.choice([0,1,2,3,4,5,6,7,8])
-        return random_choice
+        import math
+        z = sum([math.exp(v / self.temperature) for v in self.bid_values])
+        probabilites = [math.exp(v / self.temperature) / z for v in self.bid_values]
+        print(probabilites)
+
+        r = random.random()
+        cummulative_probablities = 0.0
+        for i in range(len(probabilites)):
+            prob = probabilites[i]
+            cummulative_probablities += prob
+            if cummulative_probablities > r:
+                return i
+        return len(probabilites) - 1
 
 bm = BidManager()
 bm.start(200_00)
