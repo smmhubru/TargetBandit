@@ -10,7 +10,7 @@ class BidManager(object):
                  bid_rewards=[],
                  run_counts=[],
                  bid_values=[],
-                 temperature=0.0003,
+                 temperature=0.1,
                  bid_probabilities=[]):
         self.max_bid = max_bid
         self.min_bid = min_bid
@@ -26,9 +26,11 @@ class BidManager(object):
         self.bid_probabilities = bid_probabilities
 
     def start(self, max_bid):
-        self.max_bid = max_bid
         """Start working. Generate bids from max, all numbers in penny"""
+        self.max_bid = max_bid
+
         def make_points(max_bid, min_bid):
+            """Make 9 points of bids to test."""
             bid_points = [0] * 9
             bid_points[0] = min_bid
             bid_points[8] = max_bid
@@ -60,7 +62,6 @@ class BidManager(object):
             self.working_flag = True
             return self.bid_points[self.current_bid_index]
         else:
-            print("Start error")
             return False
 
     def stop(self):
@@ -107,7 +108,17 @@ class BidManager(object):
             self.current_bid_index = self._choose_bid_ucb() #change algo here
             return self.bid_points[self.current_bid_index]
 
+    def normalized_bid_values(self):
+        """Returns normalized values (between 0 and 1) for better perfomance with algos."""
+        highest_value_index = self._ind_max(self.bid_values)
+        multiplier = 1 // self.bid_values[highest_value_index]
+        normalized_values = []
+        for value in self.bid_values:
+            normalized_values.append(value * multiplier)
+        return normalized_values
+
     def _previous_impressions(self, ad_id):
+        """Find previous total impressions for given ad by id."""
         if self.current_time > 0:
             for i in reversed(range(self.current_time)):
                 if self.history[i]["ad_id"] == ad_id:
@@ -117,11 +128,13 @@ class BidManager(object):
             return 0
 
     def _round_impressions(self):
+        """Count impressions per time round."""
         delta_impressions = self.history[self.current_time]["total_impressions"] - \
                             self._previous_impressions(self.history[self.current_time]["ad_id"])
         return {"round_impressions": delta_impressions}
 
     def _round_reward(self):
+        """Count reward: impressions per rouble."""
         round_impressions = self.history[self.current_time]["round_impressions"]
         reward = float(round_impressions / self.bid_points[self.current_bid_index])
         return {"reward": reward}
@@ -133,11 +146,11 @@ class BidManager(object):
         self.bid_values[choosen_bid_index] = new_value
 
     def _choose_bid(self):
-        """Softmax algo working with temperature."""
+        """Softmax algo for choosing bid, working with self.temperature. Less temperature - less explore."""
         import random
         import math
-        z = sum([math.exp(v / self.temperature) for v in self.bid_values])
-        probabilites = [math.exp(v / self.temperature) / z for v in self.bid_values]
+        z = sum([math.exp(v / self.temperature) for v in self.normalized_bid_values()])
+        probabilites = [math.exp(v / self.temperature) / z for v in self.normalized_bid_values()]
         self.bid_probabilities = probabilites
 
         r = random.random()
@@ -150,7 +163,7 @@ class BidManager(object):
         return len(probabilites) - 1
 
     def _choose_bid_ucb(self):
-        """UCB1 working algo"""
+        """UCB1 working algo for choosing bids. Works with normalized values."""
         import math
         n_arms = len(self.bid_points)
         for arm in range(n_arms):
@@ -162,20 +175,20 @@ class BidManager(object):
         total_counts = sum(self.run_counts)
 
         for arm in range(n_arms):
-            bonus = ((math.log(total_counts) / 500000) / float(self.run_counts[arm])) ** (1./2)
+            bonus = ((2 * math.log(total_counts)) / float(self.run_counts[arm])) ** (1./2)
             print(bonus)
-            ucb_values[arm] = self.bid_values[arm] + bonus
-        print(ucb_values)
+            ucb_values[arm] = self.normalized_bid_values()[arm] + bonus
         choice = self._ind_max(ucb_values)
-        print(choice)
         return choice
 
     def _ind_max(self, x):
+        """Find index of maximum value element in array."""
         m = max(x)
         return x.index(m)
 
 
 class BidArm(object):
+    """Arm for testing vk bids."""
     def __init__(self, recommended_bid=300_00,
                  temp=0.8,
                  base_size=5000):
@@ -197,6 +210,7 @@ class BidArm(object):
             return result
 
     def pull(self, bid):
+        """Pull arm with given bid in pennies."""
         import random
         probability = self._prob(bid)
         result = 0
@@ -209,7 +223,7 @@ class BidArm(object):
 bm = BidManager()
 ba = BidArm()
 imp_count = 0
-start_bid = bm.start(400_00)
+start_bid = bm.start(500_00)
 start_response = ba.pull(start_bid)
 imp_count += start_response
 response = bm.commit(1, imp_count)
