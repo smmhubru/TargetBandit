@@ -10,7 +10,7 @@ class BidManager(object):
                  bid_rewards=[],
                  run_counts=[],
                  bid_values=[],
-                 temperature=0.1):
+                 temperature=0.0001):
         self.max_bid = max_bid
         self.min_bid = min_bid
         self.bid_points = bid_points
@@ -147,5 +147,46 @@ class BidManager(object):
                 return i
         return len(probabilites) - 1
 
+
+class BidArm(object):
+    def __init__(self, recommended_bid=300_00,
+                 temp=0.8,
+                 base_size=5000):
+        self.recommended_bid = recommended_bid
+        self.temp = temp
+        self.base_size = base_size
+
+    def _prob(self, x):
+        if (x < 30_00) or (x > 1000_00):
+            return False
+        if x >= self.recommended_bid:
+            y = pow(x, float(1) / 3)
+        elif x < self.recommended_bid:
+            y = -pow(abs(x - self.recommended_bid), float(1) / 3) + pow(self.recommended_bid, float(1) / 3)
+        result = self.temp * (y / (pow(self.recommended_bid, float(1) / 3)))
+        if result > 1:
+            return 1
+        else:
+            return result
+
+    def pull(self, bid):
+        import random
+        probability = self._prob(bid)
+        result = 0
+        for i in range(self.base_size // 200):
+            if random.random() < probability:
+                result += 1
+        return result
+
+
 bm = BidManager()
-bm.start(200_00)
+ba = BidArm()
+imp_count = 0
+start_bid = bm.start(350_00)
+start_response = ba.pull(start_bid)
+imp_count += start_response
+response = bm.commit(1, imp_count)
+for i in range(100000):
+    imp_count += ba.pull(response)
+    response = bm.commit(1, imp_count)
+
