@@ -10,7 +10,8 @@ class BidManager(object):
                  bid_rewards=[],
                  run_counts=[],
                  bid_values=[],
-                 temperature=0.0001):
+                 temperature=0.0003,
+                 bid_probabilities=[]):
         self.max_bid = max_bid
         self.min_bid = min_bid
         self.bid_points = bid_points
@@ -22,6 +23,7 @@ class BidManager(object):
         self.run_counts = run_counts
         self.bid_values = bid_values
         self.temperature = temperature
+        self.bid_probabilities = bid_probabilities
 
     def start(self, max_bid):
         self.max_bid = max_bid
@@ -47,14 +49,14 @@ class BidManager(object):
             self.min_bid = 30_00
             self.bid_points = make_points(self.max_bid, self.min_bid)
             self.current_time = 0
-            self.current_bid_index = self._choose_bid()
+            self.current_bid_index = self._choose_bid_ucb()
             self.working_flag = True
             return self.bid_points[self.current_bid_index]
         elif (self.max_bid >= 1_20) and (self.max_bid <= 20_00):
             self.min_bid = 1_20
             self.bid_points = make_points(self.max_bid, self.min_bid)
             self.current_time = 0
-            self.current_bid_index = self._choose_bid()
+            self.current_bid_index = self._choose_bid_ucb()
             self.working_flag = True
             return self.bid_points[self.current_bid_index]
         else:
@@ -102,7 +104,7 @@ class BidManager(object):
             self.run_counts[self.current_bid_index] += 1
             self._update_values(self.current_bid_index, reward["reward"])
             self.bid_rewards[self.current_bid_index] += reward["reward"]
-            self.current_bid_index = self._choose_bid()
+            self.current_bid_index = self._choose_bid_ucb() #change algo here
             return self.bid_points[self.current_bid_index]
 
     def _previous_impressions(self, ad_id):
@@ -136,7 +138,7 @@ class BidManager(object):
         import math
         z = sum([math.exp(v / self.temperature) for v in self.bid_values])
         probabilites = [math.exp(v / self.temperature) / z for v in self.bid_values]
-        print(probabilites)
+        self.bid_probabilities = probabilites
 
         r = random.random()
         cummulative_probablities = 0.0
@@ -146,6 +148,31 @@ class BidManager(object):
             if cummulative_probablities > r:
                 return i
         return len(probabilites) - 1
+
+    def _choose_bid_ucb(self):
+        """UCB1 working algo"""
+        import math
+        n_arms = len(self.bid_points)
+        for arm in range(n_arms):
+            if self.run_counts[arm] == 0:
+                print("прогрев")
+                return arm
+
+        ucb_values = [0.0] * n_arms
+        total_counts = sum(self.run_counts)
+
+        for arm in range(n_arms):
+            bonus = ((math.log(total_counts) / 500000) / float(self.run_counts[arm])) ** (1./2)
+            print(bonus)
+            ucb_values[arm] = self.bid_values[arm] + bonus
+        print(ucb_values)
+        choice = self._ind_max(ucb_values)
+        print(choice)
+        return choice
+
+    def _ind_max(self, x):
+        m = max(x)
+        return x.index(m)
 
 
 class BidArm(object):
@@ -182,11 +209,11 @@ class BidArm(object):
 bm = BidManager()
 ba = BidArm()
 imp_count = 0
-start_bid = bm.start(350_00)
+start_bid = bm.start(400_00)
 start_response = ba.pull(start_bid)
 imp_count += start_response
 response = bm.commit(1, imp_count)
-for i in range(100000):
+for i in range(288):
     imp_count += ba.pull(response)
     response = bm.commit(1, imp_count)
 
